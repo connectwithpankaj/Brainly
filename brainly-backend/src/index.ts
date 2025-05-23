@@ -1,9 +1,10 @@
 // import { Message } from './../node_modules/typescript/lib/typescript.d';
 import express from "express";
 import jwt from "jsonwebtoken";
-import { ContentModel, UserModel } from "./db";
+import { ContentModel, LinkModel, UserModel } from "./db";
 import { JWT_SECRET } from "./config";
 import { UserMiddleware } from "./middleware";
+import { random } from "./utils";
 
 const app = express();
 app.use(express.json());
@@ -43,7 +44,7 @@ app.post("/api/vi/content", UserMiddleware, async (req, res) => {
     link,
     type,
     //@ts-ignore
-    UserId: req.UserId,
+    userId: req.userId,
     tags: [],
   });
   res.json({
@@ -52,27 +53,77 @@ app.post("/api/vi/content", UserMiddleware, async (req, res) => {
 });
 app.get("/api/vi/content", UserMiddleware, async (req, res) => {
   //@ts-ignore
-  const UserId = req.UserId;
+  const userId = req.userId;
   const content = await ContentModel.find({
-    UserId: UserId,
-  }).populate("UserId");
+    userId: userId,
+  }).populate("userId");
   res.json({
     content,
   });
 });
 
-app.delete("/api/vi/content",UserMiddleware, async (req, res) => {
-  const contentId  = req.body.contentId;
+app.delete("/api/vi/content", UserMiddleware, async (req, res) => {
+  const contentId = req.body.contentId;
   await ContentModel.deleteMany({
     contentId,
     //@ts-ignore
-    UserId : req.UserId
+    userId: req.userId,
   });
   res.json({
-    Message : "Content Deleted"
-  })
+    Message: "Content Deleted",
+  });
 });
 
-// app.post("/api/vi/signin", (req, res) => {});
+app.post("/api/vi/brain/share", UserMiddleware, async (req, res) => {
+  const share = req.body.share;
+  if (share) {
+    const hash = random(10); 
+    await LinkModel.create({
+      //@ts-ignore
+      userId: req.userId,
+      hash,
+    });
+
+    res.json({
+      hash, 
+      message: "Sharable link created",
+    });
+  } else {
+    await LinkModel.deleteOne({
+      //@ts-ignore
+      userId: req.userId,
+    });
+  }
+  res.json({
+
+    message: "Sharable link removed",
+  });
+});
+
+app.get("/api/vi/brain/:shareLink", async (req, res) => {
+  const hash = req.params.shareLink;
+
+  const link = await LinkModel.findOne({
+    hash,
+  });
+  if (!link) {
+    res.status(411).json({
+      message: "Sorry Incorrect Input",
+    });
+    return;
+  }
+
+  const content = await ContentModel.find({
+    userId: link.userId,
+  });
+
+  const user = await UserModel.findOne({
+    _id: link.userId,
+  });
+  res.json({
+    username: user?.username,
+    content: content,
+  });
+});
 
 app.listen(3000);

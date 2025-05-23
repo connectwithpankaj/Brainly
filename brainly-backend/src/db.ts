@@ -12,9 +12,20 @@ const UserSchema = new Schema({
 export const UserModel = model("Users", UserSchema);
 
 const ContentSchema = new Schema({
-  title: String,
+  type: String,
   link: String,
   tags: [{ type: mongoose.Types.ObjectId, ref: "Tag" }],
-  UserId: { type: mongoose.Types.ObjectId, ref: "Users", require: true },
+  userId: { type: mongoose.Types.ObjectId, ref: "Users", require: true },
 });
 export const ContentModel = model("Content", ContentSchema);
+
+const LinkSchema = new Schema({
+  hash: String,
+  userId: {
+    type: mongoose.Types.ObjectId,
+    ref: "Users",
+    required: true,
+    unique: true,
+  },
+});
+export const LinkModel = model("Links", LinkSchema);
